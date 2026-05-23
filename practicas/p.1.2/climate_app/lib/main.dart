@@ -28,12 +28,13 @@ class MyHomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const Icon(Icons.sunny, size: 120, color: Colors.orange),
             const Text(
               '28°C',
               style: TextStyle(
                 fontSize: 96,
                 fontWeight: FontWeight.bold,
-                color: Colors.red,
+                color: Colors.deepOrangeAccent,
               ),
             ),
             const SizedBox(height: 16),
@@ -42,7 +43,6 @@ class MyHomePage extends StatelessWidget {
               style: TextStyle(fontSize: 24, color: Colors.blueGrey),
             ),
             const SizedBox(height: 32),
-            const Icon(Icons.sunny, size: 120, color: Colors.blue),
           ],
         ),
       ),
