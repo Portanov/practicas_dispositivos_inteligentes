@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 class TemperatureCard extends StatelessWidget {
   final String city;
   final double temperature;
+  final String unit;
   final String condition;
   final Color iconColor;
 
@@ -11,6 +12,7 @@ class TemperatureCard extends StatelessWidget {
     Key? key,
     required this.city,
     required this.temperature,
+    required this.unit,
     required this.condition,
     this.iconColor = Colors.blue,
   }) : super(key: key);
@@ -25,14 +27,21 @@ class TemperatureCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            WeatherIcon(condition: condition),
+            WeatherIcon(condition: condition, iconColor: iconColor),
             Text(
-              '${temperature.toStringAsFixed(0)}°C',
-              style: const TextStyle(fontSize: 64, fontWeight: FontWeight.bold, color: Colors.blue),
+              '${temperature.toStringAsFixed(0)}$unit',
+              style: TextStyle(
+                fontSize: 64,
+                fontWeight: FontWeight.bold,
+                color: iconColor,
+              ),
             ),
             Text(
               city,
-              style: const TextStyle(fontWeight: FontWeight.normal, fontSize: 24),
+              style: const TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: 24,
+              ),
             ),
           ],
         ),
