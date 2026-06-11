@@ -4,7 +4,7 @@ import '../providers/weather_provider.dart';
 
 class DetailScreen extends StatefulWidget {
   final String city;
-  const DetailScreen({Key? key, required this.city}) : super(key: key);
+  const DetailScreen({super.key, required this.city});
 
   @override
   State<DetailScreen> createState() => _DetailScreenState();

@@ -7,11 +7,11 @@ class WeatherIcon extends StatelessWidget {
   final Color iconColor;
 
   const WeatherIcon({
-    Key? key,
+    super.key,
     required this.condition,
     this.size = 120,
     this.iconColor = Colors.deepOrangeAccent,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

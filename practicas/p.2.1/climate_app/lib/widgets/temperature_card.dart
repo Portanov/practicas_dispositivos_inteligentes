@@ -9,13 +9,13 @@ class TemperatureCard extends StatelessWidget {
   final Color iconColor;
 
   const TemperatureCard({
-    Key? key,
+    super.key,
     required this.city,
     required this.temperature,
     required this.unit,
     required this.condition,
     this.iconColor = Colors.blue,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
