@@ -11,14 +11,15 @@ class DetailScreen extends StatefulWidget {
 }
 
 class _DetailScreenState extends State<DetailScreen> {
+  
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<WeatherProvider>(context, listen: false)
-          .loadWeather(widget.city);
-    });
+    Future.microtask(
+      () => context.read<WeatherProvider>().fetchWeather(widget.city),
+    );
   }
+
   @override
   Widget build(BuildContext context) {
     final isLandscape =

@@ -3,58 +3,58 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BleService {
   Future<List<ScanResult>> scanDevices({
-    Duration timeout = const Duration(seconds: 15),
+    Duration timeout = const Duration(seconds: 10),
   }) async {
-    final List<ScanResult> results = [];
+    final Map<String, ScanResult> devicesMap = {};
 
-    var subscription = FlutterBluePlus.onScanResults.listen((scanResults) {
-      if (scanResults.isNotEmpty) {
-        for (ScanResult r in scanResults) {
-          results.add(r);
-        }
+    final subscription = FlutterBluePlus.onScanResults.listen((results) {
+      for (var r in results) {
+        devicesMap[r.device.remoteId.str] = r;
       }
-    }, onError: (e) => print(e));
+    });
+
     FlutterBluePlus.cancelWhenScanComplete(subscription);
 
     await FlutterBluePlus.adapterState
-        .where((val) => val == BluetoothAdapterState.on)
+        .where((state) => state == BluetoothAdapterState.on)
         .first;
-    await FlutterBluePlus.startScan(
-      withServices: [Guid("180D")],
-      withNames: ["CandyVint"],
-      timeout: timeout,
-    );
 
-    await FlutterBluePlus.isScanning.where((val) => val == false).first;
-    subscription.cancel();
+    await FlutterBluePlus.startScan(timeout: timeout);
 
-    return results;
+    await FlutterBluePlus.isScanning.where((s) => s == false).first;
+
+    await subscription.cancel();
+
+    return devicesMap.values.toList();
   }
 
   Future<bool> connectToDevice(BluetoothDevice device) async {
     try {
-      await device.connect();
+      await device.connect(autoConnect: false);
       return true;
     } catch (e) {
-      print('Error al conectar con el dispositivo');
+      print('Error al conectar: $e');
       return false;
     }
   }
 
   Future<void> disconnectDevice(BluetoothDevice device) async {
     try {
-      device.disconnect();
+      await device.disconnect();
     } catch (e) {
-      print('Error al desconectar');
+      print('Error al desconectar: $e');
     }
   }
 
   Future<List<BluetoothService>> discoverDeviceServices(
     BluetoothDevice device,
   ) async {
-    await device.connect();
-    final services = await device.discoverServices();
-    return services;
+    try {
+      return await device.discoverServices();
+    } catch (e) {
+      print('Error al descubrir servicios: $e');
+      return [];
+    }
   }
 
   Future<List<int>> readCharacteristicValue(
@@ -62,13 +62,29 @@ class BleService {
     Guid serviceUuid,
     Guid characteristicUuid,
   ) async {
-    final services = await device.discoverServices();
+    try {
+      final services = await device.discoverServices();
 
-    final service = services.firstWhere((s) => s.uuid == serviceUuid);
-    final characteristic = service.characteristics.firstWhere(
-      (c) => c.uuid == characteristicUuid,
-    );
+      final service = services.firstWhere(
+        (s) => s.uuid == serviceUuid,
+        orElse: () => throw Exception("Servicio no encontrado"),
+      );
 
-    return await characteristic.read();
+      final characteristic = service.characteristics.firstWhere(
+        (c) => c.uuid == characteristicUuid,
+        orElse: () => throw Exception("Característica no encontrada"),
+      );
+
+      final data = await characteristic.read();
+
+      if (data.isEmpty || data.length > 50) {
+        throw Exception("Datos inválidos");
+      }
+
+      return data;
+    } catch (e) {
+      print('Error al leer característica: $e');
+      return [];
+    }
   }
 }

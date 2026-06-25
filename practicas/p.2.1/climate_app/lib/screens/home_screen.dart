@@ -5,7 +5,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'search_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/weather_provider.dart';
-import '../services/ble_service.dart';
+import '../providers/ble_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,38 +15,28 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final BleService _bleService = BleService();
-  List<ScanResult> _devices = [];
-  bool _isScanning = false;
-
-  Future<void> _scanDevices() async {
-    setState(() {
-      _isScanning = true;
-    });
-
-    try {
-      final results = await _bleService.scanDevices();
-      setState(() {
-        _devices = results;
-      });
-    } finally {
-      setState(() {
-        _isScanning = false;
-      });
-    }
-  }
-
-  Future<void> _connectToDevice(BluetoothDevice device) async {
-    await _bleService.connectToDevice(device);
-  }
+  final _controller = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    Provider.of<WeatherProvider>(
-      context,
-      listen: false,
-    ).loadWeather('Santiago de Querétaro');
+    Future.microtask(
+      () => context.read<WeatherProvider>().fetchWeather('Queretaro'),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _search() {
+    final city = _controller.text.trim();
+    if (city.isNotEmpty) {
+      context.read<WeatherProvider>().fetchWeather(city);
+      FocusScope.of(context).unfocus();
+    }
   }
 
   @override
@@ -73,29 +63,165 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Consumer<WeatherProvider>(
-        builder: (context, weather, child) {
-          if (weather.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (weather.errorMessage != null) {
-            return Center(child: Text(weather.errorMessage!));
-          } else if (weather.weather == null) {
-            return const Center(child: Text('No data'));
-          }
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      hintText: 'Buscar ciudad...',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onSubmitted: (_) => _search(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(onPressed: _search, child: const Text('Buscar')),
+              ],
+            ),
+          ),
 
-          final isLandscape =
-              MediaQuery.of(context).orientation == Orientation.landscape;
+          Expanded(
+            child: Consumer<WeatherProvider>(
+              builder: (context, weather, _) {
+                if (weather.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          return Center(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: isLandscape
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                if (weather.error != null) {
+                  return Center(child: Text(weather.error!));
+                }
+
+                if (weather.weather == null) {
+                  return const Center(child: Text('Ingresa una ciudad'));
+                }
+
+                final isLandscape =
+                    MediaQuery.of(context).orientation == Orientation.landscape;
+
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+
+                    child: isLandscape
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    TemperatureCard(
+                                      city: weather.weather!.city,
+                                      temperature: weather.displayedTemperature,
+                                      unit: weather.temperatureUnit,
+                                      condition: weather.weather!.condition,
+                                      iconColor: WeatherUtils.getWeatherColor(
+                                        weather.weather!.condition,
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 20),
+
+                                    Text(
+                                      'Humedad: ${weather.weather!.humidity}%',
+                                    ),
+                                    Text(
+                                      'Viento: ${weather.weather!.windSpeed} m/s',
+                                    ),
+
+                                    const SizedBox(height: 20),
+
+                                    ElevatedButton(
+                                      onPressed: () async {
+                                        final city = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const SearchScreen(),
+                                          ),
+                                        );
+
+                                        if (city != null) {
+                                          context
+                                              .read<WeatherProvider>()
+                                              .fetchWeather(city);
+                                        }
+                                      },
+                                      child: const Text('Buscar Ciudades'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              Expanded(
+                                child: Consumer<BleProvider>(
+                                  builder: (_, ble, __) {
+                                    return Column(
+                                      children: [
+                                        ElevatedButton(
+                                          onPressed: ble.isScanning
+                                              ? null
+                                              : ble.scanDevices,
+                                          child: Text(
+                                            ble.isScanning
+                                                ? 'Escaneando...'
+                                                : 'Buscar Dispositivos',
+                                          ),
+                                        ),
+
+                                        const SizedBox(height: 10),
+
+                                        if (ble.isConnecting)
+                                          const CircularProgressIndicator()
+                                        else
+                                          Text(ble.status),
+
+                                        const SizedBox(height: 10),
+
+                                        ListView.builder(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          itemCount: ble.devices.length,
+                                          itemBuilder: (context, index) {
+                                            final device =
+                                                ble.devices[index].device;
+
+                                            return ListTile(
+                                              title: Text(
+                                                device.platformName.isNotEmpty
+                                                    ? device.platformName
+                                                    : 'Dispositivo sin nombre',
+                                              ),
+                                              subtitle: Text(
+                                                device.remoteId.str,
+                                              ),
+                                              onTap: () async {
+                                                await ble.connectAndRead(
+                                                  device,
+                                                  serviceUuid: Guid('180D'),
+                                                  characteristicUuid: Guid(
+                                                    '2A37',
+                                                  ),
+                                                );
+                                              },
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          )
+                        : Column(
                             children: [
                               TemperatureCard(
                                 city: weather.weather!.city,
@@ -106,117 +232,99 @@ class _HomeScreenState extends State<HomeScreen> {
                                   weather.weather!.condition,
                                 ),
                               ),
-                            ],
-                          ),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Humedad: ${weather.weather!.humidity}% | Viento: 12 km/h',
-                              ),
-                              const Text('Sensación Térmica: 20°C'),
-                              const SizedBox(height: 24),
+
+                              const SizedBox(height: 20),
+
+                              Text('Humedad: ${weather.weather!.humidity}%'),
+                              Text('Viento: ${weather.weather!.windSpeed} m/s'),
+
+                              const SizedBox(height: 20),
+
                               ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
+                                onPressed: () async {
+                                  final city = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
                                           const SearchScreen(),
                                     ),
                                   );
+
+                                  if (city != null) {
+                                    context
+                                        .read<WeatherProvider>()
+                                        .fetchWeather(city);
+                                  }
                                 },
                                 child: const Text('Buscar Ciudades'),
                               ),
-                            ],
-                          ),
-                        ],
-                      )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TemperatureCard(
-                            city: weather.weather!.city,
-                            temperature: weather.displayedTemperature,
-                            unit: weather.temperatureUnit,
-                            condition: weather.weather!.condition,
-                            iconColor: WeatherUtils.getWeatherColor(
-                              weather.weather!.condition,
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                          Text(
-                            'Humedad: ${weather.weather!.humidity}% | Viento: 12 km/h',
-                          ),
-                          const SizedBox(height: 32),
-                          const Text('Sensación Térmica: 20°C'),
-                          const SizedBox(height: 40),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SearchScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text('Buscar Ciudades'),
-                          ),
-                          const SizedBox(height: 10),
-                          ElevatedButton(
-                            onPressed: _isScanning ? null : _scanDevices,
-                            child: const Text('Buscar Dispositivos'),
-                          ),
 
-                          const SizedBox(height: 10),
+                              const SizedBox(height: 20),
 
-                          Consumer<WeatherProvider>(
-                            builder: (_, weather, __) {
-                              if (weather.isBleConnecting) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: CircularProgressIndicator(),
-                                );
-                              }
-                              return Text(weather.bleStatus);
-                            },
-                          ),
+                              Consumer<BleProvider>(
+                                builder: (_, ble, __) {
+                                  return Column(
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: ble.isScanning
+                                            ? null
+                                            : ble.scanDevices,
+                                        child: Text(
+                                          ble.isScanning
+                                              ? 'Escaneando...'
+                                              : 'Buscar Dispositivos',
+                                        ),
+                                      ),
 
-                          const SizedBox(height: 10),
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _devices.length,
-                            itemBuilder: (context, index) {
-                              final scanResult = _devices[index];
-                              final device = scanResult.device;
+                                      const SizedBox(height: 10),
 
-                              return ListTile(
-                                title: Text(
-                                  device.platformName.isNotEmpty
-                                      ? device.platformName
-                                      : 'Dispositivo sin nombre',
-                                ),
-                                subtitle: Text(device.remoteId.str),
-                                onTap: () async {
-                                  final provider = context
-                                      .read<WeatherProvider>();
-                                  await provider.connectAndReadDevice(
-                                    device,
-                                    serviceUuid: Guid('180D'),
-                                    characteristicUuid: Guid('2A37'),
+                                      if (ble.isConnecting)
+                                        const CircularProgressIndicator()
+                                      else
+                                        Text(ble.status),
+
+                                      const SizedBox(height: 10),
+
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        itemCount: ble.devices.length,
+                                        itemBuilder: (context, index) {
+                                          final device =
+                                              ble.devices[index].device;
+
+                                          return ListTile(
+                                            title: Text(
+                                              device.platformName.isNotEmpty
+                                                  ? device.platformName
+                                                  : 'Dispositivo sin nombre',
+                                            ),
+                                            subtitle: Text(device.remoteId.str),
+                                            onTap: () async {
+                                              await ble.connectAndRead(
+                                                device,
+                                                serviceUuid: Guid('180D'),
+                                                characteristicUuid: Guid(
+                                                  '2A37',
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   );
                                 },
-                              );
-                            },
+                              ),
+                            ],
                           ),
-
-                        ],
-                      ),
-              ),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }

@@ -8,7 +8,7 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  List<String> cities = ['Santiago', 'Querétaro', 'México'];
+  List<String> cities = ['Chihuahua', 'Querétaro', 'México'];
   List<String> filtered = [];
   void filterCities(String query) {
     setState(() {

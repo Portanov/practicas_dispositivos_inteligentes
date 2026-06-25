@@ -1,0 +1,3 @@
+-keep class io.flutter.** { *; }
+-keep class ** { *; }
+-keep class android.bluetooth.** { *; }

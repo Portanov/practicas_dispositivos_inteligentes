@@ -11,21 +11,27 @@ class WeatherUtils {
 
   static IconData getWeatherIcon(String condition) {
     switch (condition.toLowerCase()) {
-      case 'cloudy':
-      case 'nublado':
-        return Icons.cloud;
 
-      case 'sunny':
-      case 'soleado':
+      case 'clear':
         return Icons.wb_sunny;
 
-      case 'rainy':
-      case 'lluvia':
+      case 'clouds':
+        return Icons.cloud;
+
+      case 'rain':
+      case 'drizzle':
         return Icons.thunderstorm;
 
-      case 'snowy':
-      case 'nevado':
+      case 'thunderstorm':
+        return Icons.flash_on;
+
+      case 'snow':
         return Icons.snowing;
+
+      case 'mist':
+      case 'fog':
+      case 'haze':
+        return Icons.blur_on;
 
       default:
         return Icons.cloud;
@@ -38,16 +44,24 @@ class WeatherUtils {
 
   static Color getWeatherColor(String condition) {
     switch (condition.toLowerCase()) {
-      case 'sunny':
-        return Colors.deepOrangeAccent;
-      case 'cloudy':
-        return Colors.blue;
-      case 'rainy':
+      case 'clear':
+        return Colors.orange;
+
+      case 'clouds':
+        return Colors.blueGrey;
+
+      case 'rain':
+      case 'drizzle':
         return Colors.indigo;
-      case 'snowy':
+
+      case 'thunderstorm':
+        return Colors.deepPurple;
+
+      case 'snow':
         return Colors.grey;
+
       default:
-        return Colors.deepOrangeAccent;
+        return Colors.blue;
     }
   }
 }
