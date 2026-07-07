@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'sensor_simulator.dart';
 import 'ble_server.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() => runApp(const WearableApp());
 
@@ -26,6 +27,16 @@ class _WearableAppState extends State<WearableApp> {
     _subscribeStreams();
   }
 
+  Future<void> requestBlePermissions() async {
+    await [
+      Permission.bluetooth,
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.bluetoothAdvertise,
+      Permission.location,
+    ].request();
+  }
+
   void _subscribeStreams() {
     _sim.stepsStream.listen((v) => setState(() => _steps = v));
     _sim.heartRateStream.listen((v) => setState(() => _heartRate = v));
@@ -37,6 +48,7 @@ class _WearableAppState extends State<WearableApp> {
     setState(() => _active = !_active);
     if (_active) {
       _sim.start();
+      requestBlePermissions();
       _server.startAdvertising();
     } else {
       _server.stop();
@@ -93,7 +105,10 @@ class _WearableAppState extends State<WearableApp> {
                   backgroundColor: _active ? Colors.red : Colors.green,
                   minimumSize: const Size(100, 36),
                 ),
-                child: Text(_active ? 'Detener' : 'Iniciar', style: TextStyle(color: Colors.white),),
+                child: Text(
+                  _active ? 'Detener' : 'Iniciar',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
               if (_active)
                 const Padding(

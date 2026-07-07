@@ -24,7 +24,7 @@ class SensorSimulator {
   Timer? _timer;
   
   void start() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _update());
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _update());
   }
 
   void _update() {
@@ -62,9 +62,5 @@ class SensorSimulator {
 
   void stop() {
     _timer?.cancel();
-    _stepsCtrl.close();
-    _heartRateCtrl.close();
-    _caloriesCtrl.close();
-    _statusCtrl.close();
   }
 }
