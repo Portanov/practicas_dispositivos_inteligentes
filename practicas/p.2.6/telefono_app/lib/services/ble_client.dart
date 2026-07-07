@@ -4,8 +4,6 @@ import 'dart:typed_data';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../../ble_constants.dart';
 import '../../models/activity_data.dart';
-import 'dart:io';
-import 'package:permission_handler/permission_handler.dart';
 
 class BleClient {
   BluetoothDevice? _device;
@@ -41,7 +39,6 @@ class BleClient {
         }
       }
     });
-    await _ensureCentralPermissions();
     await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
     try {
       _device = await completer.future.timeout(
@@ -126,24 +123,5 @@ class BleClient {
 
   void dispose() {
     _dataCtrl.close();
-  }
-
-  Future<void> _ensureCentralPermissions() async {
-    if (!Platform.isAndroid) return;
-
-    final statuses = await [
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-      Permission.locationWhenInUse,
-    ].request();
-
-    final denied = statuses.entries
-        .where((e) => !e.value.isGranted)
-        .map((e) => e.key.toString())
-        .toList();
-
-    if (denied.isNotEmpty) {
-      throw Exception('Permisos BLE faltantes: ${denied.join(', ')}');
-    }
   }
 }

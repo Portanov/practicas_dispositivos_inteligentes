@@ -33,20 +33,11 @@ class _WearableAppState extends State<WearableApp> {
     _sim.statusStream.listen((v) => setState(() => _status = v));
   }
 
-  Future<void> _toggleActivity() async {
+  void _toggleActivity() {
     setState(() => _active = !_active);
-
     if (_active) {
-      try {
-        _sim.start();
-        await _server.startAdvertising();
-      } catch (e) {
-        setState(() => _active = false);
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('No se pudo iniciar BLE: $e')));
-      }
+      _sim.start();
+      _server.startAdvertising();
     } else {
       _server.stop();
     }
